@@ -1,0 +1,5 @@
+definitions:
+  namespace:
+    hippocms:
+      uri: http://www.hippocms.com/hippocms/nt/1.0
+      cnd: namespaces/hippocms.cnd

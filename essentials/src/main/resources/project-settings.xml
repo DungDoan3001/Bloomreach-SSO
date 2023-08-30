@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<project>
+  <projectNamespace>hippocms</projectNamespace>
+  <confirmParams>false</confirmParams>
+  <selectedProjectPackage>com.dtdu</selectedProjectPackage>
+  <selectedBeansPackage>com.dtdu.beans</selectedBeansPackage>
+  <selectedComponentsPackage>com.dtdu.components</selectedComponentsPackage>
+  <selectedRestPackage>com.dtdu.rest</selectedRestPackage>
+  <hstRoot>/hst:hippocms</hstRoot>
+  <webfileBundleName>site</webfileBundleName>
+  <setupDone>false</setupDone>
+  <useSamples>true</useSamples>
+  <extraTemplates>true</extraTemplates>
+</project>

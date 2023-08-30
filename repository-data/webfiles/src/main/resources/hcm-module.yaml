@@ -1,0 +1,5 @@
+group: 
+  name: hippocms
+project: hippocms
+module:
+  name: hippocms-repository-data-webfiles

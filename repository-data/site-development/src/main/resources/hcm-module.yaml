@@ -1,0 +1,6 @@
+site: hippocms
+group: hippocms
+project: hippocms
+module:
+  name: hippocms-repository-data-site-development
+  after: hippocms-repository-data-site

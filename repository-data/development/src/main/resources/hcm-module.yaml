@@ -1,0 +1,7 @@
+group: 
+  name: hippocms
+  after: hippo-cms
+project: hippocms
+module: 
+  name: hippocms-repository-data-development
+  after: hippocms-repository-data-application
