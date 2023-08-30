@@ -37,6 +37,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/saml*", "/*.gif", "/*.jpg", "/*.jpeg", "/*.png", "/*.jsp", "/*.js", "/*.css", "/console*").permitAll()
                 .anyRequest().authenticated()
                 .and()
+                .headers().frameOptions().sameOrigin()
+                .and()
                 .addFilterAfter(new LoginSuccessFilter(), FilterSecurityInterceptor.class)
                 .apply(saml())
                 .serviceProvider()
