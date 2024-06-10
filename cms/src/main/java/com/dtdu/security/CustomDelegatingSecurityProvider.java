@@ -6,49 +6,27 @@ import org.apache.jackrabbit.value.*;
 import org.hippoecm.repository.security.*;
 import org.hippoecm.repository.security.user.*;
 import org.slf4j.*;
-
 import java.util.*;
 import javax.jcr.*;
 
-/**
- * Custom <code>org.hippoecm.repository.security.SecurityProvider</code> implementation.
- * <p>
- * Hippo Repository allows to set a custom security provider for various reasons (e.g, SSO) for specific users.
- * If a user is associated with a custom security provider, then Hippo Repository invokes
- * the custom security provider to do authentication and authorization.
- * </P>
- */
+import static com.dtdu.security.LoginSuccessFilter.*;
+
 public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider {
-
     private static Logger log = LoggerFactory.getLogger(CustomDelegatingSecurityProvider.class);
-
     private HippoUserManager userManager;
 
-    /**
-     * Constructs by creating the default <code>RepositorySecurityProvider</code> to delegate all the other calls
-     * except of authentication calls.
-     *
-     * @throws RepositoryException
-     */
     public CustomDelegatingSecurityProvider() throws RepositoryException {
         super(new RepositorySecurityProvider());
     }
 
-    /**
-     * Returns a custom (delegating) HippoUserManager to authenticate a user by SAML Assertion.
-     */
     @Override
     public UserManager getUserManager() throws RepositoryException {
         if (userManager == null) {
             userManager = new DelegatingHippoUserManager((HippoUserManager) super.getUserManager()) {
                 @Override
-                public boolean authenticate(SimpleCredentials creds) throws RepositoryException {
-                    if (validateAuthentication(creds)) {
-                        String userId = creds.getUserID();
-                        if (!hasUser(userId)) {
-                            //user doesn't exist in the repositoru
-                            syncUser(createUser(userId), getGroupManager().getGroup("admin"));
-                        }
+                public boolean authenticate(SimpleCredentials simpleCredentials) throws RepositoryException {
+                    if (validateAuthentication(simpleCredentials)) {
+                        handleUserInformation(simpleCredentials);
                         return true;
                     } else {
                         return false;
@@ -66,13 +44,9 @@ public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider
     public UserManager getUserManager(Session session) throws RepositoryException {
         return new DelegatingHippoUserManager((HippoUserManager) super.getUserManager(session)) {
             @Override
-            public boolean authenticate(SimpleCredentials creds) throws RepositoryException {
-                if(validateAuthentication(creds)) {
-                    String userId = creds.getUserID();
-                    if (!hasUser(userId)) {
-                        //user doesn't exist in the repositoru
-                        syncUser(createUser(userId), getGroupManager().getGroup("admin"));
-                    }
+            public boolean authenticate(SimpleCredentials simpleCredentials) throws RepositoryException {
+                if(validateAuthentication(simpleCredentials)) {
+                    handleUserInformation(simpleCredentials);
                     return true;
                 } else{
                     return false;
@@ -122,14 +96,108 @@ public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider
         return false;
     }
 
-    protected void syncUser(final Node user, final Node group) throws RepositoryException {
-        user.setProperty("hipposys:securityprovider", "saml");
-        user.setProperty("hipposys:active", true);
-        //updating group members
-        Value[] values = group.getProperties("hipposys:members").nextProperty().getValues();
-        Value[] newValues = Arrays.copyOf(values, values.length + 1);
-        newValues[values.length] = new StringValue(user.getName());
-        group.setProperty("hipposys:members", newValues);
+    private void handleUserInformation(final SimpleCredentials credentials) throws RepositoryException {
+        String userId = credentials.getUserID();
+        String currentRole = (String) credentials.getAttribute(ROLE_ATTRIBUTE);
+        if (!userManager.hasUser(userId)) {
+            log.info(credentials.getAttribute(ROLE_ATTRIBUTE) + " ROELEEEEEEEEE");
+            Node user = userManager.createUser(userId);
+            switch (currentRole) {
+                case "admin":
+                    syncUser(user, credentials);
+                    syncGroup(user, getGroupManager().getGroup("admin"), true);
+                    break;
+                case "tester":
+                    String testerGroupName = "tester";
+                    List<String> testerRoles = Arrays.asList("xm.repository-browser.user", "xm.default-user.system-admin");
+                    Node testerGroup = (getGroupManager().hasGroup(testerGroupName)) ? getGroupManager().getGroup(testerGroupName) : createNewGroup(testerGroupName, testerRoles);
+                    syncUser(user, credentials);
+                    syncGroup(user, testerGroup, true);
+                default:
+                    String readerGroupName = "reader";
+                    List<String> readerRoles = Arrays.asList("xm.repository-browser.user", "xm.default-user.system-admin");
+                    Node readerGroup = (getGroupManager().hasGroup(readerGroupName)) ? getGroupManager().getGroup(readerGroupName) : createNewGroup(readerGroupName, readerRoles);
+                    syncUser(user, credentials);
+                    syncGroup(user, readerGroup, true);
+            }
+        } else {
+            Node user = userManager.getUser(userId);
+            switch (currentRole) {
+                case "admin":
+                    syncUser(user, credentials);
+                    syncGroup(user, getGroupManager().getGroup("admin"),false);
+                    break;
+                case "tester":
+                    String testerGroupName = "tester";
+                    List<String> testerRoles = Arrays.asList("xm.repository-browser.user", "xm.default-user.system-admin");
+                    Node testerGroup = (getGroupManager().hasGroup(testerGroupName)) ? getGroupManager().getGroup(testerGroupName) : createNewGroup(testerGroupName, testerRoles);
+                    syncUser(user, credentials);
+                    syncGroup(user, testerGroup, false);
+                default:
+                    String readerGroupName = "reader";
+                    List<String> readerRoles = Arrays.asList("xm.repository-browser.user", "xm.default-user.system-admin");
+                    Node readerGroup = (getGroupManager().hasGroup(readerGroupName)) ? getGroupManager().getGroup(readerGroupName) : createNewGroup(readerGroupName, readerRoles);
+                    syncUser(user, credentials);
+                    syncGroup(user, readerGroup,false);
+            }
+        }
     }
 
+    private void syncUser(final Node user, final SimpleCredentials credentials) throws RepositoryException {
+        user.setProperty("hipposys:securityprovider", "saml");
+        user.setProperty("hipposys:active", true);
+        user.setProperty("hipposys:firstname", (String) credentials.getAttribute(FIRST_NAME_ATTRIBUTE));
+        user.setProperty("hipposys:lastname", (String) credentials.getAttribute(LASTNAME_ATTRIBUTE));
+        user.setProperty("hipposys:email", (String) credentials.getAttribute(EMAIL_ATTRIBUTE));
+        userManager.saveUsers();
+    }
+
+    private void syncGroup(final Node user, final Node group, Boolean isNewMember) throws RepositoryException {
+        if(isNewMember) {
+            Value[] membersList = group.getProperties("hipposys:members").nextProperty().getValues();
+            Value[] newMemberList = Arrays.copyOf(membersList, membersList.length + 1);
+            newMemberList[membersList.length] = new StringValue(user.getName());
+            group.setProperty("hipposys:members", newMemberList);
+            getGroupManager().saveGroups();
+        } else {
+            final String newMember = user.getName();
+            Set<String> members = getGroupManager().getMembers(group);
+
+            Boolean foundMember = false;
+            for (String member : members) {
+                if(member.equals(newMember)) {
+                    foundMember = true;
+                    break;
+                }
+            }
+
+            if(!foundMember) {
+                Value[] membersList = group.getProperties("hipposys:members").nextProperty().getValues();
+                Value[] newMemberList = Arrays.copyOf(membersList, membersList.length + 1);
+                newMemberList[membersList.length] = new StringValue(user.getName());
+                group.setProperty("hipposys:members", newMemberList);
+            }
+
+            NodeIterator groupsThatMemberBelongsTo = getGroupManager().getMemberships(newMember);
+            Node groupNode = groupsThatMemberBelongsTo.nextNode();
+            while(groupNode != null) {
+                log.info("Current group: " + groupNode.getName());
+                groupNode = groupsThatMemberBelongsTo.nextNode();
+            }
+        }
+    }
+
+    private Node createNewGroup(final String groupName, final List<String> roleList) throws RepositoryException {
+        Node group = getGroupManager().createGroup(groupName);
+        group.setProperty("hipposys:securityprovider", new StringValue("internal"));
+
+        final Value[] values = new Value[roleList.size()];
+        for (int index = 0; index < roleList.size(); index++) {
+            values[index] = group.getSession().getValueFactory().createValue(roleList.get(index));
+            log.info("VALUE INDEX OF [" + index + "]: " + values[index]);
+        }
+        group.setProperty("hipposys:userroles", values);
+        getGroupManager().saveGroups();
+        return group;
+    }
 }

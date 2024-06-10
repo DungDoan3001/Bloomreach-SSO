@@ -1,6 +1,7 @@
 package com.dtdu.security;
 
 import org.hippoecm.frontend.model.UserCredentials;
+import org.opensaml.saml2.core.Attribute;
 import org.opensaml.saml2.core.NameID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,11 +14,17 @@ import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class LoginSuccessFilter implements Filter {
 
+    public static final String FIRST_NAME_ATTRIBUTE = "firstname";
+    public static final String LASTNAME_ATTRIBUTE = "lastname";
+    public static final String EMAIL_ATTRIBUTE = "email";
+    public static final String ROLE_ATTRIBUTE = "role";
     private static final Logger LOGGER = LoggerFactory.getLogger( LoginSuccessFilter.class );
-
     private static final String SSO_USER_STATE = SSOUserState.class.getName();
 
     private static ThreadLocal<SSOUserState> tlCurrentSSOUserState = new ThreadLocal<SSOUserState>();
@@ -26,6 +33,9 @@ public class LoginSuccessFilter implements Filter {
     public void init(FilterConfig filterConfig) {
     }
 
+    /**
+     * Creates a new secured session if the user is authorized. {@inheritDoc}
+     */
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         LOGGER.info("doFilter LoginSuccessFilter");
@@ -33,39 +43,16 @@ public class LoginSuccessFilter implements Filter {
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (!authentication.isAuthenticated()){
-            LOGGER.debug("User not authenticated");
             chain.doFilter(request, response);
-            return;
         }
 
         // Check if the user already has a SSO user state stored in HttpSession before.
-        HttpSession session = ((HttpServletRequest) request).getSession();
-
+        final HttpSession session = ((HttpServletRequest) request).getSession();
         SSOUserState userState = (SSOUserState) session.getAttribute(SSO_USER_STATE);
 
         if(userState == null || !userState.getSessionId().equals(session.getId())) {
-            if (authentication.getCredentials() instanceof SAMLCredential){
-                SAMLCredential samlCredential = (SAMLCredential) authentication.getCredentials();
-                final NameID nameID = samlCredential.getNameID();
-                if (nameID == null){
-                    LOGGER.warn("nameID is null in SAML Credentials");
-                    chain.doFilter(request, response);
-                    return;
-                }
-                final String username = nameID.getValue();
-                SimpleCredentials creds = new SimpleCredentials(username, "DUMMY".toCharArray());
-                creds.setAttribute(SSOUserState.SAML_ID, username);
-                userState = new SSOUserState(new UserCredentials(creds), session.getId());
-                session.setAttribute(SSO_USER_STATE, userState);
-
-
-
-            } else {
-                LOGGER.debug("Authenticated user credentials are not SAML credentials.");
-                chain.doFilter(request, response);
-                return;
-            }
-
+            userState = new SSOUserState(new UserCredentials(createSimpleCredentials(authentication)), session.getId());
+            session.setAttribute(SSO_USER_STATE, userState);
         }
 
         // If the user has a valid SSO user state, then
@@ -94,6 +81,28 @@ public class LoginSuccessFilter implements Filter {
 
     @Override
     public void destroy() {
+        tlCurrentSSOUserState.remove();
+    }
 
+    private SimpleCredentials createSimpleCredentials(final Authentication authentication) {
+        final SAMLCredential samlCredential = (SAMLCredential) authentication.getCredentials();
+        final String username = samlCredential.getNameID().getValue();
+        final SimpleCredentials simpleCredentials = new SimpleCredentials(username, "DUMMY_PWD".toCharArray());
+
+        for(Attribute attr : samlCredential.getAttributes()) {
+            String[] attrVals = samlCredential.getAttributeAsStringArray(attr.getName());
+            List<String> values = new ArrayList<>(Arrays.asList(attrVals));
+            LOGGER.info(String.format("[CLAIMS INFO]:    %s (%s) : %s", attr.getName(), attr.getFriendlyName(), values));
+        }
+
+        LOGGER.info("ROLE CLAIMS: " + samlCredential.getAttributeAsString("http://schemas.microsoft.com/ws/2008/06/identity/claims/role"));
+
+        simpleCredentials.setAttribute(FIRST_NAME_ATTRIBUTE, samlCredential.getAttributeAsString("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"));
+        simpleCredentials.setAttribute(LASTNAME_ATTRIBUTE, samlCredential.getAttributeAsString("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname"));
+        simpleCredentials.setAttribute(EMAIL_ATTRIBUTE, samlCredential.getAttributeAsString("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"));
+        simpleCredentials.setAttribute(ROLE_ATTRIBUTE, samlCredential.getAttributeAsString("http://schemas.microsoft.com/ws/2008/06/identity/claims/role"));
+        simpleCredentials.setAttribute(SSOUserState.SAML_ID, username);
+
+        return simpleCredentials;
     }
 }
