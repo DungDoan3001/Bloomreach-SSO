@@ -184,10 +184,11 @@ public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider
 
         final Value[] values = new Value[roleList.size()];
         for (int index = 0; index < roleList.size(); index++) {
-            values[index] = group.getSession().getValueFactory().createValue(roleList.get(index));
-            log.info("VALUE INDEX OF [" + index + "]: " + values[index]);
+            String role = roleList.get(index);
+            values[index] = group.getSession().getValueFactory().createValue(role);
         }
         group.setProperty("hipposys:userroles", values);
+
         return group;
     }
 }
