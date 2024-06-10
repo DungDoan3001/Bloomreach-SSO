@@ -105,40 +105,40 @@ public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider
             switch (currentRole) {
                 case "admin":
                     syncUser(user, credentials);
-                    syncGroup(user, getGroupManager().getGroup("admin"), true);
+                    syncGroup(user, getGroupManager().getGroup("admin"));
                     break;
                 case "tester":
                     String testerGroupName = "tester";
                     List<String> testerRoles = Arrays.asList("xm.repository-browser.user", "xm.default-user.system-admin");
                     Node testerGroup = (getGroupManager().hasGroup(testerGroupName)) ? getGroupManager().getGroup(testerGroupName) : createNewGroup(testerGroupName, testerRoles);
                     syncUser(user, credentials);
-                    syncGroup(user, testerGroup, true);
+                    syncGroup(user, testerGroup);
                 default:
                     String readerGroupName = "reader";
                     List<String> readerRoles = Arrays.asList("xm.repository-browser.user", "xm.default-user.system-admin");
                     Node readerGroup = (getGroupManager().hasGroup(readerGroupName)) ? getGroupManager().getGroup(readerGroupName) : createNewGroup(readerGroupName, readerRoles);
                     syncUser(user, credentials);
-                    syncGroup(user, readerGroup, true);
+                    syncGroup(user, readerGroup);
             }
         } else {
             Node user = userManager.getUser(userId);
             switch (currentRole) {
                 case "admin":
                     syncUser(user, credentials);
-                    syncGroup(user, getGroupManager().getGroup("admin"),false);
+                    syncGroup(user, getGroupManager().getGroup("admin"));
                     break;
                 case "tester":
                     String testerGroupName = "tester";
                     List<String> testerRoles = Arrays.asList("xm.repository-browser.user", "xm.default-user.system-admin");
                     Node testerGroup = (getGroupManager().hasGroup(testerGroupName)) ? getGroupManager().getGroup(testerGroupName) : createNewGroup(testerGroupName, testerRoles);
                     syncUser(user, credentials);
-                    syncGroup(user, testerGroup, false);
+                    syncGroup(user, testerGroup);
                 default:
                     String readerGroupName = "reader";
                     List<String> readerRoles = Arrays.asList("xm.repository-browser.user", "xm.default-user.system-admin");
                     Node readerGroup = (getGroupManager().hasGroup(readerGroupName)) ? getGroupManager().getGroup(readerGroupName) : createNewGroup(readerGroupName, readerRoles);
                     syncUser(user, credentials);
-                    syncGroup(user, readerGroup,false);
+                    syncGroup(user, readerGroup);
             }
         }
     }
@@ -149,41 +149,32 @@ public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider
         user.setProperty("hipposys:firstname", (String) credentials.getAttribute(FIRST_NAME_ATTRIBUTE));
         user.setProperty("hipposys:lastname", (String) credentials.getAttribute(LASTNAME_ATTRIBUTE));
         user.setProperty("hipposys:email", (String) credentials.getAttribute(EMAIL_ATTRIBUTE));
-        userManager.saveUsers();
     }
 
-    private void syncGroup(final Node user, final Node group, Boolean isNewMember) throws RepositoryException {
-        if(isNewMember) {
+    private void syncGroup(final Node user, final Node group) throws RepositoryException {
+        final String newMember = user.getName();
+        Set<String> members = getGroupManager().getMembers(group);
+
+        Boolean foundMember = false;
+        for (String member : members) {
+            if(member.equals(newMember)) {
+                foundMember = true;
+                break;
+            }
+        }
+
+        if(!foundMember) {
             Value[] membersList = group.getProperties("hipposys:members").nextProperty().getValues();
             Value[] newMemberList = Arrays.copyOf(membersList, membersList.length + 1);
             newMemberList[membersList.length] = new StringValue(user.getName());
             group.setProperty("hipposys:members", newMemberList);
-            getGroupManager().saveGroups();
-        } else {
-            final String newMember = user.getName();
-            Set<String> members = getGroupManager().getMembers(group);
+        }
 
-            Boolean foundMember = false;
-            for (String member : members) {
-                if(member.equals(newMember)) {
-                    foundMember = true;
-                    break;
-                }
-            }
-
-            if(!foundMember) {
-                Value[] membersList = group.getProperties("hipposys:members").nextProperty().getValues();
-                Value[] newMemberList = Arrays.copyOf(membersList, membersList.length + 1);
-                newMemberList[membersList.length] = new StringValue(user.getName());
-                group.setProperty("hipposys:members", newMemberList);
-            }
-
-            NodeIterator groupsThatMemberBelongsTo = getGroupManager().getMemberships(newMember);
-            Node groupNode = groupsThatMemberBelongsTo.nextNode();
-            while(groupNode != null) {
-                log.info("Current group: " + groupNode.getName());
-                groupNode = groupsThatMemberBelongsTo.nextNode();
-            }
+        NodeIterator groupsThatMemberBelongsTo = getGroupManager().getMemberships(newMember);
+        Node groupNode = groupsThatMemberBelongsTo.nextNode();
+        while(groupNode != null) {
+            log.info("Current group: " + groupNode.getName());
+            groupNode = groupsThatMemberBelongsTo.nextNode();
         }
     }
 
@@ -197,7 +188,6 @@ public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider
             log.info("VALUE INDEX OF [" + index + "]: " + values[index]);
         }
         group.setProperty("hipposys:userroles", values);
-        getGroupManager().saveGroups();
         return group;
     }
 }
