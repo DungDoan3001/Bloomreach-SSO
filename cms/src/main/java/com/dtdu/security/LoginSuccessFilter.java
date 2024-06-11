@@ -18,12 +18,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class LoginSuccessFilter implements Filter {
+import static com.dtdu.security.Constants.*;
 
-    public static final String FIRST_NAME_ATTRIBUTE = "firstname";
-    public static final String LASTNAME_ATTRIBUTE = "lastname";
-    public static final String EMAIL_ATTRIBUTE = "email";
-    public static final String ROLE_ATTRIBUTE = "role";
+public class LoginSuccessFilter implements Filter {
     private static final Logger LOGGER = LoggerFactory.getLogger( LoginSuccessFilter.class );
     private static final String SSO_USER_STATE = SSOUserState.class.getName();
 
@@ -97,10 +94,10 @@ public class LoginSuccessFilter implements Filter {
 
         LOGGER.info("ROLE CLAIMS: " + samlCredential.getAttributeAsString("http://schemas.microsoft.com/ws/2008/06/identity/claims/role"));
 
-        simpleCredentials.setAttribute(FIRST_NAME_ATTRIBUTE, samlCredential.getAttributeAsString("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"));
-        simpleCredentials.setAttribute(LASTNAME_ATTRIBUTE, samlCredential.getAttributeAsString("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname"));
-        simpleCredentials.setAttribute(EMAIL_ATTRIBUTE, samlCredential.getAttributeAsString("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"));
-        simpleCredentials.setAttribute(ROLE_ATTRIBUTE, samlCredential.getAttributeAsString("http://schemas.microsoft.com/ws/2008/06/identity/claims/role"));
+        simpleCredentials.setAttribute(ATTRIBUTE_FIRST_NAME, samlCredential.getAttributeAsString("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"));
+        simpleCredentials.setAttribute(ATTRIBUTE_LAST_NAME, samlCredential.getAttributeAsString("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname"));
+        simpleCredentials.setAttribute(ATTRIBUTE_EMAIL, samlCredential.getAttributeAsString("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"));
+        simpleCredentials.setAttribute(ATTRIBUTE_ROLE, samlCredential.getAttributeAsString("http://schemas.microsoft.com/ws/2008/06/identity/claims/role"));
         simpleCredentials.setAttribute(SSOUserState.SAML_ID, username);
 
         return simpleCredentials;
