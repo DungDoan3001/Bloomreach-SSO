@@ -1,8 +1,8 @@
 package com.dtdu.security;
 
-import java.io.Serializable;
-
 import org.hippoecm.frontend.model.UserCredentials;
+
+import java.io.Serializable;
 
 /**
  * SSO User State object which contains a pair of JSESSIONID and <code>UserCredentials</code>.

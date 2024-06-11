@@ -1,8 +1,5 @@
 package org.bloomreach.xm.cms;
 
-import javax.naming.NamingException;
-import javax.sql.DataSource;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.actuate.jdbc.DataSourceHealthIndicator;
@@ -12,6 +9,9 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.jndi.JndiObjectFactoryBean;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+
+import javax.naming.NamingException;
+import javax.sql.DataSource;
 
 @Configuration
 @PropertySource(value = "classpath:actuator.properties")

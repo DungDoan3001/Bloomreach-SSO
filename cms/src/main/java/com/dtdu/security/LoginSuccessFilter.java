@@ -2,7 +2,6 @@ package com.dtdu.security;
 
 import org.hippoecm.frontend.model.UserCredentials;
 import org.opensaml.saml2.core.Attribute;
-import org.opensaml.saml2.core.NameID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;

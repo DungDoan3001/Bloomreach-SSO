@@ -1,14 +1,20 @@
 package com.dtdu.security;
 
-import org.apache.commons.lang.*;
-import org.apache.jackrabbit.api.security.user.*;
-import org.apache.jackrabbit.value.*;
-import org.hippoecm.repository.security.*;
-import org.hippoecm.repository.security.user.*;
-import org.slf4j.*;
+import org.apache.commons.lang.StringUtils;
+import org.apache.jackrabbit.api.security.user.UserManager;
+import org.apache.jackrabbit.value.StringValue;
+import org.hippoecm.repository.security.DelegatingSecurityProvider;
+import org.hippoecm.repository.security.RepositorySecurityProvider;
+import org.hippoecm.repository.security.user.DelegatingHippoUserManager;
+import org.hippoecm.repository.security.user.HippoUserManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.*;
 import javax.jcr.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 
 import static com.dtdu.security.Constants.*;
 
