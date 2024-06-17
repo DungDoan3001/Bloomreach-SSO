@@ -19,7 +19,7 @@ import java.util.Set;
 import static com.dtdu.security.Constants.*;
 
 public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider {
-    private static Logger log = LoggerFactory.getLogger(CustomDelegatingSecurityProvider.class);
+    private static Logger logger = LoggerFactory.getLogger(CustomDelegatingSecurityProvider.class);
     private HippoUserManager userManager;
 
     public CustomDelegatingSecurityProvider() throws RepositoryException {
@@ -73,7 +73,7 @@ public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider
      * @throws RepositoryException
      */
     protected boolean validateAuthentication(SimpleCredentials creds) throws RepositoryException {
-        log.info("CustomDelegatingSecurityProvider validating credentials: {}", creds);
+        logger.info("CustomDelegatingSecurityProvider validating credentials: {}", creds);
 
         SSOUserState userState = LoginSuccessFilter.getCurrentSSOUserState();
 
@@ -91,27 +91,29 @@ public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider
             return StringUtils.isNotEmpty(userState.getCredentials().getUsername());
 
         } else {
-
             String samlId = (String) creds.getAttribute(SSOUserState.SAML_ID);
 
             if (StringUtils.isNotBlank(samlId)) {
-                log.info("Authentication allowed to: {}", samlId);
+                logger.info("Authentication allowed to: {}", samlId);
                 return true;
             }
         }
-
         return false;
     }
 
     private void handleUserInformation(final SimpleCredentials credentials) throws RepositoryException {
         String userId = credentials.getUserID();
         String currentRole = (String) credentials.getAttribute(ATTRIBUTE_ROLE);
-        if(currentRole == null || currentRole.trim().isEmpty())
-            currentRole = READER_GROUP_NAME;
+
+        if(currentRole == null || currentRole.trim().isEmpty()){
+            String errorMessage = "Invalid role: The role provided is not recognized or is not allowed for this operation.";
+            logger.debug(errorMessage);
+            throw new RepositoryException(errorMessage);
+        }
 
         Node user = userManager.hasUser(userId) ? userManager.getUser(userId) : userManager.createUser(userId);
-
         Node group = manageGroup(currentRole);
+
         syncUser(user, credentials);
         syncGroup(user, group);
     }
@@ -126,9 +128,11 @@ public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider
                 case TESTER_GROUP_NAME:
                     groupRoles = TESTER_ROLES;
                     break;
-                default:
-                    groupRoles = READER_ROLES;
-                    break;
+                default: {
+                    String errorMessage = "Invalid group name: The group provided does not have a valid group name.";
+                    logger.debug(errorMessage);
+                    throw new RepositoryException(errorMessage);
+                }
             }
             return getGroupManager().hasGroup(groupName) ? getGroupManager().getGroup(groupName) : createNewGroup(groupName, groupRoles);
         } else {
@@ -136,14 +140,17 @@ public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider
         }
     }
 
-    private String getGroupNameForRole(String role) {
+    private String getGroupNameForRole(String role) throws RepositoryException {
         switch (role) {
-            case ADMIN_GROUP_NAME:
+            case ADMIN_ROLE_NAME:
                 return ADMIN_GROUP_NAME;
-            case TESTER_GROUP_NAME:
+            case TESTER_ROLE_NAME:
                 return TESTER_GROUP_NAME;
-            default:
-                return READER_GROUP_NAME;
+            default: {
+                String errorMessage = "Invalid role name: The role provided does not have a valid role name.";
+                logger.debug(errorMessage);
+                throw new RepositoryException(errorMessage);
+            }
         }
     }
 
@@ -176,7 +183,7 @@ public class CustomDelegatingSecurityProvider extends DelegatingSecurityProvider
         NodeIterator groupsThatMemberBelongsTo = getGroupManager().getMemberships(newMember);
         while (groupsThatMemberBelongsTo.hasNext()) {
             Node groupNode = groupsThatMemberBelongsTo.nextNode();
-            log.info("Current group: " + groupNode.getName());
+            logger.info("Current group: " + groupNode.getName());
 
             if (!(groupNode.getName().equals(group.getName()) || groupNode.getName().equals(EVERYBODY_GROUP_NAME))) {
                 // Get the current members

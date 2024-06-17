@@ -1,14 +1,18 @@
 package com.dtdu.security;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.saml.websso.WebSSOProfileConsumer;
+import org.springframework.security.saml.websso.WebSSOProfileConsumerImpl;
 import org.springframework.security.web.access.intercept.FilterSecurityInterceptor;
 
+import static com.dtdu.security.Constants.HOURS_ALLOWED_FROM_PREVIOUS_LOGIN;
 import static org.springframework.security.extensions.saml2.config.SAMLConfigurer.saml;
 
 @EnableWebSecurity
@@ -43,6 +47,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .and()
                 .addFilterAfter(new LoginSuccessFilter(), FilterSecurityInterceptor.class)
                 .apply(saml())
+                .webSSOProfileConsumer(getWebSSOProfileConsumerImpl())
                 .serviceProvider()
                 .keyStore()
                 .storeFilePath(this.keyStoreFilePath)
@@ -56,5 +61,12 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .and()
                 .identityProvider()
                 .metadataFilePath(this.metadataUrl);
+    }
+
+    public WebSSOProfileConsumerImpl getWebSSOProfileConsumerImpl() {
+        WebSSOProfileConsumerImpl consumer = new WebSSOProfileConsumerImpl();
+        int secondsFromPreviousLogin = HOURS_ALLOWED_FROM_PREVIOUS_LOGIN * 3600;
+        consumer.setMaxAuthenticationAge(secondsFromPreviousLogin);
+        return consumer;
     }
 }

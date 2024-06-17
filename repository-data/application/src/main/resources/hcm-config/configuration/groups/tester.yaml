@@ -1,17 +1,15 @@
 definitions:
   config:
-    /hippo:configuration/hippo:groups/reader:
+    /hippo:configuration/hippo:groups/tester:
       jcr:primaryType: hipposys:group
       hipposys:members:
         .meta:category: system
         .meta:add-new-system-values: true
         type: string
-        value: [test@doanthanhdung.onmicrosoft.com]
+        value: [dev.dung310105_gmail.com#EXT#@doanthanhdung.onmicrosoft.com]
       hipposys:securityprovider: internal
       hipposys:userroles:
         .meta:category: system
         .meta:add-new-system-values: true
         type: string
-        value: [xm.cms.user, xm.console.user, xm.dashboard.user, xm.channel.user,
-          xm.project.user, xm.content.user, xm.advanced-search.user, xm.system.user,
-          xm.security.viewer]
+        value: [xm.default-user.system-admin]
